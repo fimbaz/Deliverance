@@ -20,7 +20,7 @@
         false))))
 
 
-(defn name-taken? [username]
+(defn is-taken? [username]
   (sql/with-connection common/cxn
     (sql/with-query-results res
       ["SELECT true FROM users WHERE username = ?"
@@ -39,7 +39,12 @@
         true
         false))))
 
-(defn name-valid? [username]
+(defn is-valid? [username]
   (if (nil? (re-matches #"[0-9a-zA-Z]{1,32}" username))
+    false
+    true))
+
+(defn is-password-valid? [password]
+  (if (nil? (re-matches #"\w{6,32}" password))
     false
     true))
