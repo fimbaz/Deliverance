@@ -44,6 +44,9 @@
     false
     true))
 
+(defn is-email-taken [email]
+  (sql/with-connection common/cxn
+    (let 
 (defn is-password-valid? [password]
   (if (nil? (re-matches #"\w{6,32}" password))
     false
