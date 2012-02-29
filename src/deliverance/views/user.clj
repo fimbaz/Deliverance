@@ -2,13 +2,20 @@
   (:require [deliverance.models.user :as user]
             [noir.cookies :as cookies]
             [noir.validation :as vali]
-            [deliverance.views.home :as home])
+            [noir.request :as request]
+            [deliverance.views.home :as home]
+            [noir.cookies :as cookies]
+            [deliverance.models.session :as session])
   (:use [noir.core :only [defpartial defpage render]]
         [noir.response :only [redirect]]
         [hiccup.core]
         [deliverance.views.common]))
 
 
+(defn login! [username password ip]
+  (if (user/password-ok? username password)
+    (cookies/put! :deliverance-session
+                  (session/create username ip))))
 
 (defpartial form-error [message]
   [:b (first message)])
@@ -39,24 +46,11 @@
   [:h1 (first err)])
 
 
-(defpage [:get "/test/"] []
-  (vali/rule false [:test "you sock!"])
-  (test))
-
-
 
 (defpage [:get "/user/"] {:keys [username]}
   (new-user-form))
-  
-(defn form-rule [messages pred field message]
-  (if (pred)
-    (assoc messages field message)
-    messages))
 
-
-
-(vali/rule #(user/is-valid? "fim!!") [:username "sucks"])
-(defpage [:post "/user/"] {:keys [username password repeat-password email]}
+(defn validate-form! [{:keys [username password repeat-password email]}]
   (vali/rule
    (user/is-valid? username)
    [:username "username is not valid!"])
@@ -71,13 +65,20 @@
    [:password "password is invalid"])
   (vali/rule
    (not (= 0 (count password)))
-   [:password "you forgot to enter a password, bro!"])
+   [:password "you forgot to enter a password, bro!"]))
+
+
+(defpage [:post "/user/"] {:as fields}
+  (noir-session/put! :beeeep "beeeep")
+  (println (request/ring-request))
+  (validate-form! fields)
   (if (not (vali/errors? :username :password :email))
-    (do (user/create username password email)
+    (do (user/create
+         (fields :username)
+         (fields :password)
+         (fields :email))
+        (login! (fields :username)
+                (fields :password)
+                ((request/ring-request) :remote-addr))
         (redirect "/index.html"))
     (new-user-form)))
-  
-
-
-
-

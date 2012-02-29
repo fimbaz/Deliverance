@@ -15,6 +15,13 @@
   A USER is uniquely identified by his username
   --
 
+  A SESSION consists of:
+  a USERNAME (fk)
+  a unique identifier
+  a expiration time (date)
+  --
+
+  
   A  REQUEST consists of:
   
   A username (fk USER.username)
