@@ -11,14 +11,51 @@
         [hiccup.core]
         [deliverance.views.common]))
 
+(def validate-new-user-form!) (def login!) (def new-user-form) (def login-form)
 
-(defn login! [username password ip]
-  (if (user/password-ok? username password)
-    (cookies/put! :deliverance-session
-                  (session/create username ip))))
+(defpage [:get "/user/"]
+  {:keys [username]}
+  (new-user-form))
+
+
+(defpage [:post "/user/"]
+  {:as fields}
+  (validate-new-user-form! fields)
+  (if (not (vali/errors? :username :password :email))
+    (do (user/create fields)
+        (login! (assoc fields :ip ((request/ring-request) :remote-addr)))
+        (redirect "/index.html"))
+    (new-user-form)))
+
+
+(defpage [:get "/login/"]
+  []
+  (login-form))
+
+(defpage [:post "/login/"]
+  {:keys [username password]}
+   (if (user/password-ok? username password)
+     (do (let [cookie (session/create username ((request/ring-request) :remote-addr))]
+           (cookies/put! :deliverance-session cookie))
+         (redirect "/index.html"))
+     (login-form)))
+       
 
 (defpartial form-error [message]
   [:b (first message)])
+
+(defpartial login-form []
+  [:form {:name "login-form"
+          :action "/login/"
+          :method "POST"}
+   [:table
+    [:tr
+     [:td "Username:" [:td [:input {:name "username"
+                                   :type "text"}]]]
+     [:tr
+      [:td "Password:"][:td [:input {:name "password"
+                                     :type "password"} ]] (vali/on-error :password form-error)]
+    [:tr [:td [:input {:value "Sign in" :name "submit" :type "submit"}]]]]]])
 
 (defpartial new-user-form []
   [:form {:name "new-user-form"
@@ -35,22 +72,14 @@
      [:td "Repeat Password:"][:td [:input {:name "repeat-password"
                                            :type "password"}]]]
     [:tr
-     [:td "Email Address:"][:td [:input {:name "email-address"
+     [:td "Email Address:"][:td [:input {:name "email"
                                          :type "text"}] (vali/on-error :email form-error)]]
     
     [:tr [:td [:input {:value "join uss..." :name "submit" :type "submit"}]]]]])
                        
       
 
-(defpartial error-msg [err]
-  [:h1 (first err)])
-
-
-
-(defpage [:get "/user/"] {:keys [username]}
-  (new-user-form))
-
-(defn validate-form! [{:keys [username password repeat-password email]}]
+(defn validate-new-user-form! [{:keys [username password repeat-password email]}]
   (vali/rule
    (user/is-valid? username)
    [:username "username is not valid!"])
@@ -65,20 +94,16 @@
    [:password "password is invalid"])
   (vali/rule
    (not (= 0 (count password)))
-   [:password "you forgot to enter a password, bro!"]))
+   [:password "you forgot to enter a password, bro!"])
+  (vali/rule
+   (vali/is-email? email)
+   [:email "Invalid email address"]))
+
+(defpartial error-msg [err]
+  [:h1 (first err)])
 
 
-(defpage [:post "/user/"] {:as fields}
-  (noir-session/put! :beeeep "beeeep")
-  (println (request/ring-request))
-  (validate-form! fields)
-  (if (not (vali/errors? :username :password :email))
-    (do (user/create
-         (fields :username)
-         (fields :password)
-         (fields :email))
-        (login! (fields :username)
-                (fields :password)
-                ((request/ring-request) :remote-addr))
-        (redirect "/index.html"))
-    (new-user-form)))
+(defn login! [{:keys [username password ip]}]
+  (if (user/password-ok? username password)
+    (cookies/put! :deliverance-session
+                  (session/create username ip))))

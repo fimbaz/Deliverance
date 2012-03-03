@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as sql]
             [deliverance.models.common :as common]))
 
-(defn create [username password email]
+(defn create [{:keys [username password email]}]
   (sql/with-connection common/cxn
     (sql/do-prepared
      (str "INSERT INTO users (username,password,email) VALUES"

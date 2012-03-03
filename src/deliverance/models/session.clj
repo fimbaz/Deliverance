@@ -4,7 +4,9 @@
             [deliverance.models.user :as user]))
 
 (defn valid-uuid? [uuid]
-  (not (nil? (re-matches #"\p{XDigit}{8}-\p{XDigit}{4}-\p{XDigit}{4}-\p{XDigit}{4}-\p{XDigit}{12}" uuid))))
+  (if (nil? uuid)
+    false
+    (not (nil? (re-matches #"\p{XDigit}{8}-\p{XDigit}{4}-\p{XDigit}{4}-\p{XDigit}{4}-\p{XDigit}{12}" uuid)))))
 
 
 (defn create [username ip]
@@ -18,17 +20,7 @@
              "inet(?));") [username new-uuid ip]))
     new-uuid))
 
-  
-(defn get [username uuid]
-  (if (valid-uuid? uuid)
-    (sql/with-connection common/cxn
-      (sql/with-query-results res
-       ["SELECT * FROM sessions WHERE username=? AND key=uuid(?)"
-        username uuid]
-       (into {} res)))
-    nil))
-
-(defn session-info [uuid ip]
+(defn info [uuid ip]
   (if (valid-uuid? uuid)
     (sql/with-connection common/cxn
       (sql/with-query-results res
@@ -36,7 +28,7 @@
         uuid ip]
        (let [result (into {} res)
              valid (if (result :?column?) true false)]
-         (-> result
-             (dissoc :?column?)
-             (assoc :valid valid)))))))
-
+         (if valid
+           (result :username)
+           nil))))))
+            
